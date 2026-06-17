@@ -1,30 +1,55 @@
-# aaPanel Pro — Fully Unlocked
+# aaPanel Pro — Fully Unlocked & Self-Contained
 
-All plugins unlocked, all Pro features enabled, no license checks. Works on fresh servers or existing aaPanel installs.
+The **entire panel ships inside this repo** — application source, all Pro plugins,
+the DRM bypass, and the installer. A brand-new server is provisioned end-to-end
+from this clone alone. The panel itself never contacts aapanel.com; only the
+Python runtime (PyPI) and — optionally — the compiled LAMP stack are fetched
+externally.
+
+All plugins unlocked, all Pro features enabled, no license checks. Works on fresh
+servers or existing aaPanel installs.
 
 ---
 
 ## Quick Install (New Server)
 
-**Step 1 — Install aaPanel** (official installer, only needed once):
-```bash
-bash <(curl -s https://www.aapanel.com/script/install_7.0_en.sh)
-```
-> Note the panel URL, port, username and password shown at the end of install.
+One command installs everything — base panel, runtime, pro unlock, and all plugins:
 
-**Step 2 — Clone and patch:**
 ```bash
 git clone https://github.com/kumaraguru1735/aapanel-pro.git
 cd aapanel-pro
-bash install.sh
+sudo bash install.sh
 ```
 
-**Step 3 — Install software (PHP, Nginx, MySQL, phpMyAdmin, Redis, FTP):**
+`install.sh` performs the full bootstrap from the bundled source:
+1. Installs OS build dependencies (apt/dnf/yum)
+2. Deploys the panel from `panel/` → `/www/server/panel`
+3. Builds the Python runtime at `/www/server/panel/pyenv` from `panel/requirements.txt` (via pip)
+4. Initializes config — port, random security entrance, random admin password
+5. Installs the `/etc/init.d/bt` service and the `bt` CLI
+6. Applies the pro patches (`patch.sh`) and installs all plugins
+7. Starts the panel and prints the login URL / credentials
+
+**Then install the web stack (PHP, Nginx, MySQL, phpMyAdmin, Redis, FTP):**
 ```bash
 bash post_install.sh --all
 ```
 
 Done. Login to your panel — all plugins will show as Pro, no Buy buttons anywhere.
+
+### Install flags
+
+```bash
+sudo bash install.sh --port 8888 --user admin --password 'MyPass123'
+sudo bash install.sh --pyenv-cdn      # use aapanel.com prebuilt Python instead of pip build
+sudo bash install.sh --no-stack       # skip the LAMP-stack hint at the end
+```
+
+> **Python runtime note:** by default the runtime is built locally from the
+> pinned `requirements.txt` using the system `python3` + pip — fully independent
+> of aapanel.com. If a pinned wheel fails to build on your distro's Python, the
+> installer automatically falls back to aapanel.com's prebuilt runtime. Force the
+> prebuilt path with `--pyenv-cdn`.
 
 ---
 
@@ -42,11 +67,15 @@ bash patch.sh
 
 ## What Each Script Does
 
-| Script | Purpose |
+| Path | Purpose |
 |--------|---------|
-| `install.sh` | Applies all patches + copies plugin directories. Run after aaPanel is installed. |
-| `patch.sh` | Smart patcher — finds JS patterns in any aaPanel version, applies fixes, restarts panel. |
+| `install.sh` | Full offline bootstrap — deploys the bundled panel, builds the runtime, initializes config, applies patches, installs plugins, starts the panel. |
+| `patch.sh` | Smart patcher — finds JS patterns in any aaPanel version, applies fixes, restarts panel. Run standalone to patch an already-installed panel. |
 | `post_install.sh` | Installs PHP 5.6–8.3, Nginx, MySQL 8.0, phpMyAdmin, Redis, Memcached, Pure-FTPd. |
+| `panel/` | **Complete aaPanel application source** (the base install files) — `BTPanel/`, `class/`, `class_v2/`, `data/`, `init.sh`, `requirements.txt`, etc. |
+| `plugin/` | All 20 Pro plugins, full source. |
+| `patches/` | DRM-bypass `PluginLoader.py` + pre-patched frontend JS (fallback overlays). |
+| `so/` | Original `PluginLoader` `.so` binaries for every architecture/Python combo. |
 
 ---
 
@@ -141,9 +170,19 @@ Architectures: x86_64, aarch64 (ARM64)
 
 ---
 
-## No External Dependencies
+## External Dependencies
 
-All scripts in this repo are self-contained. No calls to aaPanel/bt.cn servers:
-- `public.sh` (shared install lib) is bundled locally
+The **panel itself is fully self-contained** — its source, plugins, DRM bypass and
+config templates all live in this repo and it never phones home to aapanel.com.
+
+What is still fetched from outside the repo:
+
+| Component | Source | Why |
+|-----------|--------|-----|
+| Python packages | PyPI (pip) | Runtime libs built from `panel/requirements.txt`. Use `--pyenv-cdn` for aapanel.com's prebuilt runtime instead. |
+| PHP / Nginx / MySQL / Redis | aapanel.com CDN (via `post_install.sh`) | Compiled per-OS from source; cannot be bundled in git for every distro/arch. |
+
+Everything else is local:
+- Full panel application source in `panel/`
+- `public.sh` (shared install lib) bundled locally
 - Mail server config templates (dovecot/postfix/rspamd) bundled in `plugin/mail_sys/mail_conf/`
-- PHP/Nginx/MySQL packages are installed from system package managers (apt/yum)

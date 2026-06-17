@@ -1,5 +1,14 @@
+# Python bytecode
 *.pyc
+*.pyo
 __pycache__/
-*.log
-*.db
+
+# Runtime artifacts (must NOT match the bundled panel/data/*.db templates)
 *.pid
+panel/logs/*
+!panel/logs/.gitkeep
+panel/pyenv/
+
+# OS junk
+Thumbs.db
+.DS_Store

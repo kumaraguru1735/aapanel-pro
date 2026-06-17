@@ -1,0 +1,1 @@
+import{k as n,a0 as o,j as r}from"./vue-core-gYhvQjN_.js?v=1779846436875";import{m as a}from"./naive-ui-DaI_A6CY.js?v=1779846436875";const c=n({functional:!0,render(){return o(a,{placement:"top","arrow-point-to-center":!0},{trigger:()=>o("a",{class:"bt-ask-ico"},[r("?")]),default:()=>{var e,t;return(t=(e=this.$slots).default)==null?void 0:t.call(e)}})}});export{c as _};

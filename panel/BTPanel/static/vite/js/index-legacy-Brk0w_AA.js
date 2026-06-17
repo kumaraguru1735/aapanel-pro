@@ -1,0 +1,1 @@
+System.register(["./index-legacy-CRWb9scH.js?v=1779846436875"],function(e,s){"use strict";var t,o;return{setters:[e=>{t=e.au,o=e.ag}],execute:function(){const{t:s}=o.global;e("g",e=>t.post("/mod/agent/com/get_usage_records",e)),e("e",e=>t.post("/mod/agent/com/export_usage_records",e,{requestOptions:{loading:s("Component.Pay.index_12"),successMessage:!0}}))}}});

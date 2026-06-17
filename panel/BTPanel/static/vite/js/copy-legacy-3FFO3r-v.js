@@ -1,0 +1,1 @@
+System.register(["./index-legacy-CRWb9scH.js?v=1779846436875"],function(e,t){"use strict";var s,c,r;return{setters:[e=>{s=e.b2,c=e.m,r=e.ag}],execute:function(){e("c",async e=>{const{copy:t,isSupported:i}=s({legacy:!0});i.value?(t(e),c.success(r.global.t("Utils.Copy.index_1"))):c.error(r.global.t("Utils.Copy.index_2"))})}}});

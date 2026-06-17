@@ -1,0 +1,1 @@
+import{b2 as l,m as s,ag as e}from"./index-CmkLJhc0.js?v=1779846436875";const i=async o=>{const{copy:a,isSupported:t}=l({legacy:!0});t.value?(a(o),s.success(e.global.t("Utils.Copy.index_1"))):s.error(e.global.t("Utils.Copy.index_2"))};export{i as c};

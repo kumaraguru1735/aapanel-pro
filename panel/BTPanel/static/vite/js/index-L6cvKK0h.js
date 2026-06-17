@@ -1,0 +1,1 @@
+import{au as s,ag as o}from"./index-CmkLJhc0.js?v=1779846436875";const{t}=o.global,a=e=>s.post("/mod/agent/com/get_usage_records",e),g=e=>s.post("/mod/agent/com/export_usage_records",e,{requestOptions:{loading:t("Component.Pay.index_12"),successMessage:!0}});export{g as e,a as g};

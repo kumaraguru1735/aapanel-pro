@@ -1,0 +1,26 @@
+#!/www/server/panel/pyenv/bin/python
+# coding: utf-8
+# +-------------------------------------------------------------------
+# | aaPanel
+# +-------------------------------------------------------------------
+# | Copyright (c) 2015-2099 aaPanel(www.aapanel.com) All rights reserved.
+# +-------------------------------------------------------------------
+# | Author: hwliang <hwl@aapanel.com>
+# +-------------------------------------------------------------------
+import argparse
+import os
+
+os.chdir('/www/server/panel')
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='BT Task Service')
+    parser.add_argument(
+        '--max-workers',
+        type=int,
+        default=None,
+        help='Maximum number of worker threads'
+    )
+    args = parser.parse_args()
+
+    from BTTask import task
+    task.main(max_workers=args.max_workers)

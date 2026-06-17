@@ -1,0 +1,1 @@
+System.register(["./index-legacy-CRWb9scH.js?v=1779846436875"],function(t,e){"use strict";var n,r;return{setters:[t=>{n=t.bh,r=t.cN}],execute:function(){t({i:function(t,e){const r=n(t),c=n(e);return+r<+c},s:function(){return r(Date.now())}})}}});
