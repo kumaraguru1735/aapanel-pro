@@ -17,7 +17,7 @@ sys.path.append("class/")
 import public
 main_cf = "/etc/postfix/main.cf"
 # download_url = public.get_url()
-download_url = "http://node.aapanel.com"
+download_url = "https://raw.githubusercontent.com/kumaraguru1735/aapanel-pro/main/plugin/mail_sys/mail_conf"
 
 
 def get_postconf():

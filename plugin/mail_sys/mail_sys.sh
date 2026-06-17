@@ -4,7 +4,7 @@ export PATH
 install_tmp='/tmp/bt_install.pl'
 public_file=/www/server/panel/install/public.sh
 if [ ! -f $public_file ];then
-	wget -O $public_file http://node.aapanel.com/install/public.sh -T 20 --no-check-certificate
+	cp /www/server/panel/install/public.sh $public_file 2>/dev/null || cp $(dirname $0)/public.sh $public_file 2>/dev/null || true
 fi
 . $public_file
 download_Url=$NODE_URL

@@ -4630,7 +4630,7 @@ local_name %s {
         filename = args.filename
         tmp = filename.split('|')
         local_file = tmp[0]
-        remote_file = tmp[1].format(download_conf_url="http://node.aapanel.com")
+        remote_file = tmp[1].format(download_conf_url="https://raw.githubusercontent.com/kumaraguru1735/aapanel-pro/main/plugin/mail_sys/mail_conf")
         data = public.readFile("/www/server/panel/plugin/mail_sys/services_file.txt")
         if not data:
             return public.returnMsg(False, public.lang("Get source file error!"))

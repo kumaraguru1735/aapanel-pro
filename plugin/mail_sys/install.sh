@@ -7,14 +7,14 @@ grep "English" /www/server/panel/config/config.json
 if [ "$?" -ne 0 ];then
   public_file=/www/server/panel/install/public.sh
   if [ ! -f $public_file ];then
-    wget -O $public_file https://download.bt.cn/install/public.sh -T 20;
+    cp /www/server/panel/install/public.sh $public_file 2>/dev/null || cp $(dirname $0)/public.sh $public_file 2>/dev/null || true;
   fi
   . $public_file
 
   download_Url=$NODE_URL
 else
   is_English=1
-  download_Url=https://node.aapanel.com
+  download_Url=https://raw.githubusercontent.com/kumaraguru1735/aapanel-pro/main/plugin/mail_sys
 fi
 
 echo 'download url...'
@@ -97,7 +97,6 @@ Little_tail() {
     # echo "$install_status"
 
     #0-failure, 1-success
-    curl -o /dev/null -fsSLk --connect-time 10 "https://www.aapanel.com/api/setupCount/setupProduct?product=aamail&uid=0&os=${system}&src=official&status=${install_status}&err_msg=${url_err_msg}" >/dev/null 2>&1
 
 }
 
