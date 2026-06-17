@@ -1,0 +1,9 @@
+{
+  "name": "tamper_proof",
+  "title": "Tamper Protection",
+  "versions": "5.5",
+  "ps": "Managed by aaPanel",
+  "author": "aaPanel",
+  "home": "https://www.aapanel.com",
+  "setup_path": "/www/server/panel/plugin/tamper_proof"
+}

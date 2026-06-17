@@ -1,0 +1,9 @@
+{
+  "name": "fail2ban",
+  "title": "Fail2ban",
+  "versions": "1.2",
+  "ps": "Managed by aaPanel",
+  "author": "aaPanel",
+  "home": "https://www.aapanel.com",
+  "setup_path": "/www/server/panel/plugin/fail2ban"
+}

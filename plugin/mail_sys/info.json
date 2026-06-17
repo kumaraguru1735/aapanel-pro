@@ -1,0 +1,12 @@
+{
+	"title": "Mail Server",
+	"name": "mail_sys",
+	"type":"plugin",
+	"ps": "Build Mail Server for yourself, Supports ubuntu 20/22, debian11/12",
+	"versions": "7.4.1",
+	"checks": "/www/server/panel/plugin/mail_sys",
+	"author": "official",
+	"home": "http://www.aapanel.com",
+	"date": "",
+    "display": 1
+}

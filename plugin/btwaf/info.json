@@ -1,0 +1,9 @@
+{
+  "name": "btwaf",
+  "title": "Web Application Firewall",
+  "versions": "9.8",
+  "ps": "Managed by aaPanel",
+  "author": "aaPanel",
+  "home": "https://www.aapanel.com",
+  "setup_path": "/www/server/panel/plugin/btwaf"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "load_balance",
+  "title": "Load Balance",
+  "versions": "1.0",
+  "ps": "Managed by aaPanel",
+  "author": "aaPanel",
+  "home": "https://www.aapanel.com",
+  "setup_path": "/www/server/panel/plugin/load_balance"
+}

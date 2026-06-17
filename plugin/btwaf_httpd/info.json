@@ -1,0 +1,9 @@
+{
+  "name": "btwaf_httpd",
+  "title": "WAF for Apache",
+  "versions": "2.0",
+  "ps": "Managed by aaPanel",
+  "author": "aaPanel",
+  "home": "https://www.aapanel.com",
+  "setup_path": "/www/server/panel/plugin/btwaf_httpd"
+}

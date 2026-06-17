@@ -1,0 +1,9 @@
+{
+  "name": "bt_security",
+  "title": "Firewall Security",
+  "versions": "6.0",
+  "ps": "Managed by aaPanel",
+  "author": "aaPanel",
+  "home": "https://www.aapanel.com",
+  "setup_path": "/www/server/panel/plugin/bt_security"
+}
