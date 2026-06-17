@@ -59,8 +59,8 @@ def _patch_plugin_list(data):
     """Patch a plugin list dict: set pro/ltd to _PRO_EXPIRY, fix all endtime < 0."""
     if not isinstance(data, dict):
         return data
-    data['pro'] = _PRO_EXPIRY
-    data['ltd'] = _PRO_EXPIRY
+    data['pro'] = 0   # 0 = lifetime license (isLifetime=true in frontend)
+    data['ltd'] = -1  # -1 = no enterprise license
     data['status'] = True
     plugin_list = data.get('list', [])
     for p in plugin_list:
