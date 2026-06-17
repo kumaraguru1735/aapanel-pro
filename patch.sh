@@ -22,11 +22,10 @@ bt stop 2>/dev/null || true
 # ─── 2. Install PluginLoader bypass ──────────────────────────────────────────
 info "Installing PluginLoader bypass..."
 
-# Backup original .so if not already backed up
+# Back up the original .so as PluginLoader_real.so (used by the Python mock)
 if [ ! -f "$CLASS_DIR/PluginLoader_real.so" ]; then
     ARCH=$(uname -m)
     PY_VER=$("$PANEL_DIR/pyenv/bin/python3" -c "import sys; print('Python{}.{}'.format(*sys.version_info[:2]))" 2>/dev/null || echo "Python3.12")
-    # Try exact match first, then fallback candidates
     for so in \
         "$SCRIPT_DIR/so/PluginLoader.${ARCH}.${PY_VER}.so" \
         "$SCRIPT_DIR/so/PluginLoader.${ARCH}.glibc214.${PY_VER}.so" \
@@ -34,56 +33,49 @@ if [ ! -f "$CLASS_DIR/PluginLoader_real.so" ]; then
         "$CLASS_DIR/PluginLoader.${ARCH}.glibc214.${PY_VER}.so"; do
         if [ -f "$so" ]; then
             cp "$so" "$CLASS_DIR/PluginLoader_real.so"
-            info "Backed up .so: $(basename $so) → PluginLoader_real.so"
+            info "Backed up: $(basename $so) → PluginLoader_real.so"
             break
         fi
     done
 fi
 
-# Copy all .so files from repo to class dir (so the mock can find them)
+# Copy all .so variants from repo into class dir
 if [ -d "$SCRIPT_DIR/so" ]; then
     cp -f "$SCRIPT_DIR/so/"*.so "$CLASS_DIR/" 2>/dev/null || true
 fi
 
-# Install PluginLoader.py mock
+# Install the Python mock (overrides .so, patches all plugin endtimes to pro)
 cp -f "$SCRIPT_DIR/patches/PluginLoader.py" "$CLASS_DIR/PluginLoader.py"
 info "PluginLoader.py bypass installed."
 
-# ─── 3. Patch frontend JS files ───────────────────────────────────────────────
-info "Patching frontend JS (version-agnostic)..."
+# ─── 3. Patch frontend JS files (version-agnostic) ───────────────────────────
+info "Patching frontend JS..."
 
 python3 << 'PYEOF'
 import os, sys
 
 vite_dir = "/www/server/panel/BTPanel/static/vite/js"
 if not os.path.isdir(vite_dir):
-    print("WARN: vite/js dir not found, skipping JS patches")
+    print("WARN: vite/js dir not found")
     sys.exit(0)
 
-# (pattern, replacement, description)
 PATCHES = [
-    # App Store "Buy now" indicator — always hide
+    # App Store buy indicator — always false (no plugin shows "Buy now")
     (
         'Rd=e=>e.price!=="0.00"&&(e.endtime==-1||e.endtime==-2),',
         'Rd=e=>!1,',
         'App Store buy indicator disabled'
     ),
-    # WAF router guard — bypass auth check
-    (
-        'Mt=async(e,t,s)=>{const n=Wd();try{if(await n.getWafInfo(),!n.isBuyAndInstall&&e.path!=="/waf/install"){s("/waf/install");return}if(n.isBuyAndInstall&&e.path==="/waf/install"){s("/waf/overview");return}if(n.isBuyAndInstall&&!n.isNewVersion&&e.path!=="/waf/site"){s("/waf/site");return}}catch(o){console.error(o)}s()},',
-        'Mt=async(e,t,s)=>{const n=Wd();try{await n.getWafInfo()}catch(o){}if(e.path==="/waf/install"){s("/waf/overview");return}s()},',
-        'WAF router guard bypassed'
-    ),
     # WAF install page — always show Install button (not Buy)
+    # Works because PluginLoader patch makes isBuy=true via endtime>=0
     (
         't(v)?(p(),r(m,{key:0,type:"primary",class:"text-14px",onClick:h}',
         '(!0)?(p(),r(m,{key:0,type:"primary",class:"text-14px",onClick:h}',
-        'WAF install button unlocked'
+        'WAF install page: Install button always shown'
     ),
 ]
 
-applied = 0
-already = 0
+applied = already = 0
 for fname in os.listdir(vite_dir):
     if not fname.endswith('.js'):
         continue
@@ -99,28 +91,27 @@ for fname in os.listdir(vite_dir):
                 print(f"  [+] {desc} ({fname})")
                 applied += 1
             elif new in content:
-                already += 1  # already patched
+                already += 1
         if modified:
             with open(fpath, 'w') as f:
                 f.write(content)
     except Exception as e:
-        print(f"  [!] Error in {fname}: {e}")
+        print(f"  [!] {fname}: {e}")
 
 if applied == 0 and already > 0:
     print("  [+] All JS patches already applied.")
-elif applied == 0 and already == 0:
-    print("  [!] WARNING: No patterns matched. Panel may be a different version.")
-    print("  [!] Falling back to pre-patched JS files if available...")
+elif applied == 0:
+    print("  [!] No patterns matched — falling back to pre-patched JS files...")
 PYEOF
 
-# Fallback: copy pre-patched JS files if they exist in repo
+# Fallback: overlay pre-patched JS files from repo if patterns didn't match
 if [ -d "$SCRIPT_DIR/patches/js" ]; then
     for f in "$SCRIPT_DIR/patches/js/"*.js; do
         fname=$(basename "$f")
         dest="$VITE_JS_DIR/$fname"
         if [ -f "$dest" ]; then
             cp -f "$f" "$dest"
-            info "Overlay: $fname"
+            info "Overlay applied: $fname"
         fi
     done
 fi
@@ -129,4 +120,4 @@ fi
 info "Starting panel..."
 bt start 2>/dev/null || true
 
-info "All patches applied successfully."
+info "All patches applied."
