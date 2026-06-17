@@ -9,54 +9,22 @@ export PATH
 export LANG=en_US.UTF-8
 export LANGUAGE=en_US:en
 
-get_node_url(){
-	nodes=(https://node.aapanel.com https://dg2.bt.cn https://download.bt.cn https://hk1-node.bt.cn https://na1-node.bt.cn https://jp1-node.bt.cn);
-
-	if [ "$1" ];then
-		nodes=($(echo ${nodes[*]}|sed "s#${1}##"))
-	fi
-
-	tmp_file1=/dev/shm/net_test1.pl
-	tmp_file2=/dev/shm/net_test2.pl
-	[ -f "${tmp_file1}" ] && rm -f ${tmp_file1}
-	[ -f "${tmp_file2}" ] && rm -f ${tmp_file2}
-	touch $tmp_file1
-	touch $tmp_file2
-	for node in ${nodes[@]};
-	do
-		NODE_CHECK=$(curl -k --connect-timeout 3 -m 3 2>/dev/null -w "%{http_code} %{time_total}" ${node}/net_test|xargs)
-		RES=$(echo ${NODE_CHECK}|awk '{print $1}')
-		NODE_STATUS=$(echo ${NODE_CHECK}|awk '{print $2}')
-		TIME_TOTAL=$(echo ${NODE_CHECK}|awk '{print $3 * 1000 - 500 }'|cut -d '.' -f 1)
-		if [ "${NODE_STATUS}" == "200" ];then
-			if [ $TIME_TOTAL -lt 100 ];then
-				if [ $RES -ge 1500 ];then
-					echo "$RES $node" >> $tmp_file1
-				fi
-			else
-				if [ $RES -ge 1500 ];then
-					echo "$TIME_TOTAL $node" >> $tmp_file2
-				fi
-			fi
-
-			i=$(($i+1))
-			if [ $TIME_TOTAL -lt 100 ];then
-				if [ $RES -ge 3000 ];then
-					break;
-				fi
-			fi
+# ─── Local mirror resolution (no CDN) ─────────────────────────────────────────
+# Resolve BT_MIRROR from env, then the deployed config, then the repo config.
+if [ -z "$BT_MIRROR" ]; then
+	for _cfg in /www/server/panel/data/mirror.conf "$(dirname "${BASH_SOURCE[0]}")/../../mirror.conf"; do
+		if [ -f "$_cfg" ]; then
+			# shellcheck disable=SC1090
+			. "$_cfg"
+			break
 		fi
 	done
+fi
+[ -z "$BT_MIRROR" ] && BT_MIRROR="http://127.0.0.1:5050"
 
-	NODE_URL=$(cat $tmp_file1|sort -r -g -t " " -k 1|head -n 1|awk '{print $2}')
-	if [ -z "$NODE_URL" ];then
-		NODE_URL=$(cat $tmp_file2|sort -g -t " " -k 1|head -n 1|awk '{print $2}')
-		if [ -z "$NODE_URL" ];then
-			NODE_URL='https://node.aapanel.com';
-		fi
-	fi
-	rm -f $tmp_file1
-	rm -f $tmp_file2
+get_node_url(){
+	# No CDN probing — always use the local mirror.
+	NODE_URL="$BT_MIRROR"
 }
 
 GetCpuStat(){
@@ -81,37 +49,14 @@ GetPackManager(){
 	if [ -f "/usr/bin/yum" ] && [ -f "/etc/yum.conf" ]; then
 		PM="yum"
 	elif [ -f "/usr/bin/apt-get" ] && [ -f "/usr/bin/dpkg" ]; then
-		PM="apt-get"		
+		PM="apt-get"
 	fi
 }
 
-bt_check(){
-	p_path=/www/server/panel/class/panelPlugin.py
-	if [ -f $p_path ];then
-		is_ext=$(cat $p_path|grep btwaf)
-		if [ "$is_ext" != "" ];then
-			send_check
-		fi
-	fi
-	
-	p_path=/www/server/panel/BTPanel/templates/default/index.html
-	if [ -f $p_path ];then
-		is_ext=$(cat $p_path|grep fbi)
-		if [ "$is_ext" != "" ];then
-			send_check
-		fi
-	fi
-}
+# Telemetry / anti-pro license check — disabled (no CDN, no phone-home).
+bt_check(){ :; }
+send_check(){ :; }
 
-send_check(){
-	chattr -i /etc/init.d/bt
-	chmod +x /etc/init.d/bt
-	p_path2=/www/server/panel/class/common.py
-	p_version=$(cat $p_path2|grep "version = "|awk '{print $3}'|tr -cd [0-9.])
-	curl -sS --connect-timeout 3 -m 60 http://www.bt.cn/api/panel/notpro?version=$p_version
-	NODE_URL=""
-	exit 0;
-}
 GetSysInfo(){
 	if [ "${PM}" = "yum" ]; then
 		SYS_VERSION=$(cat /etc/redhat-release)
@@ -137,25 +82,7 @@ else
 fi
 GetPackManager
 
-if [ -d "/www/server/phpmyadmin/pma" ];then
-	rm -rf /www/server/phpmyadmin/pma
-	EN_CHECK=$(cat /www/server/panel/config/config.json |grep English)
-	if [ "${EN_CHECK}" ];then
-		curl http://download.bt.cn/install/update_pro_en.sh|bash
-	else
-		curl http://download.bt.cn/install/update6.sh|bash
-	fi
-	echo > /www/server/panel/data/restart.pl
-fi
-
+# Always resolve the download node to the local mirror.
 if [ ! $NODE_URL ];then
-	EN_CHECK=$(cat /www/server/panel/config/config.json |grep English)
-	if [ -z "${EN_CHECK}" ];then
-		echo 'Selecting download node...';
-	else
-		echo "selecting download node...";
-	fi
 	get_node_url
-	bt_check
 fi
-

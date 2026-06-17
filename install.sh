@@ -3,19 +3,23 @@
 # aaPanel Pro - Fully self-contained offline installer
 # ------------------------------------------------------------------------------
 # Installs aaPanel + all pro plugins + pro unlock ENTIRELY from this repository.
-# No dependency on aapanel.com for the panel itself (only PyPI for the Python
-# runtime, and — optionally — the LAMP stack via ./post_install.sh).
+# Zero CDN dependency: the panel source ships in the repo; the Python runtime and
+# the LAMP stack are served from YOUR OWN local mirror (see mirror.conf and
+# ./mirror-pull.sh / ./mirror-serve.sh). Nothing is fetched from aapanel.com or
+# bt.cn. (A local pip wheelhouse under mirror/pip makes the runtime PyPI-free too.)
 #
 # Usage:
 #   git clone https://github.com/kumaraguru1735/aapanel-pro.git
-#   cd aapanel-pro && sudo bash install.sh
+#   cd aapanel-pro
+#   # edit mirror.conf -> BT_MIRROR="http://<your-mirror>:5050"
+#   sudo bash install.sh
 #
 # Flags:
 #   --port <n>        Panel port           (default 8888)
 #   --password <pw>   Admin password       (default: random)
 #   --user <name>     Admin username       (default: admin)
-#   --pyenv-cdn       Download prebuilt Python runtime from aapanel.com instead
-#                     of building it locally from requirements.txt via pip.
+#   --pyenv-cdn       Provision the prebuilt Python runtime from the mirror
+#                     instead of building it locally from requirements.txt.
 #   --no-stack        Skip the optional LAMP stack prompt at the end.
 # ==============================================================================
 
@@ -31,6 +35,10 @@ error() { echo -e "${RED}[!]${NC} $*"; exit 1; }
 PANEL_DIR="/www/server/panel"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$SCRIPT_DIR/panel"
+
+# Local mirror (no CDN). Override with env BT_MIRROR or by editing mirror.conf.
+[ -f "$SCRIPT_DIR/mirror.conf" ] && . "$SCRIPT_DIR/mirror.conf"
+[ -z "$BT_MIRROR" ] && BT_MIRROR="http://127.0.0.1:5050"
 
 PANEL_PORT=8888
 ADMIN_USER="admin"
@@ -114,14 +122,28 @@ else
     cp -a "$SRC_DIR"/. "$PANEL_DIR"/
 fi
 mkdir -p "$PANEL_DIR/logs" "$PANEL_DIR/data" "$PANEL_DIR/vhost/nginx" "$PANEL_DIR/vhost/apache" "$PANEL_DIR/vhost/rewrite"
-info "Panel source deployed."
+# Deploy mirror config so the panel's runtime software-installer uses the local mirror.
+printf 'BT_MIRROR="%s"\n' "$BT_MIRROR" > "$PANEL_DIR/data/mirror.conf"
+info "Panel source deployed (mirror: $BT_MIRROR)."
 
 # ─── 3. Python runtime (pyenv) ────────────────────────────────────────────────
 head_ "Setting up Python runtime"
 build_pyenv_pip() {
-    info "Building Python venv from requirements.txt (via pip)..."
     rm -rf "$PANEL_DIR/pyenv"
     python3 -m venv "$PANEL_DIR/pyenv" || return 1
+    # Prefer a local wheelhouse (fully offline, no PyPI) if one is bundled/mirrored.
+    local WHEELS=""
+    [ -d "$SCRIPT_DIR/mirror/pip" ] && WHEELS="$SCRIPT_DIR/mirror/pip"
+    [ -z "$WHEELS" ] && [ -d "$PANEL_DIR/pip" ] && WHEELS="$PANEL_DIR/pip"
+    if [ -n "$WHEELS" ]; then
+        info "Building Python venv from local wheelhouse ($WHEELS) — no PyPI."
+        "$PANEL_DIR/pyenv/bin/pip" install --no-index --find-links "$WHEELS" --upgrade pip setuptools wheel 2>/dev/null || true
+        if "$PANEL_DIR/pyenv/bin/pip" install --no-index --find-links "$WHEELS" -r "$PANEL_DIR/requirements.txt"; then
+            return 0
+        fi
+        warn "Local wheelhouse incomplete — some packages missing; falling back to PyPI for the rest."
+    fi
+    info "Building Python venv from requirements.txt (via pip/PyPI)..."
     "$PANEL_DIR/pyenv/bin/pip" install --upgrade pip setuptools wheel || return 1
     if "$PANEL_DIR/pyenv/bin/pip" install -r "$PANEL_DIR/requirements.txt"; then
         return 0
@@ -138,12 +160,17 @@ build_pyenv_pip() {
 }
 
 download_pyenv_cdn() {
-    info "Downloading prebuilt Python runtime from aapanel.com..."
     local arch; arch=$(uname -m)
-    local url="https://www.aapanel.com/script/install/pyenv_${arch}.tar.gz"
     cd "$PANEL_DIR"
-    wget -O pyenv.tar.gz "$url" --no-check-certificate || return 1
-    tar xzf pyenv.tar.gz && rm -f pyenv.tar.gz
+    # Prefer a prebuilt runtime bundled in the mirror tree, then the mirror URL.
+    if [ -f "$SCRIPT_DIR/mirror/install/pyenv_${arch}.tar.gz" ]; then
+        info "Using bundled prebuilt Python runtime (mirror/install/pyenv_${arch}.tar.gz)..."
+        tar xzf "$SCRIPT_DIR/mirror/install/pyenv_${arch}.tar.gz" -C "$PANEL_DIR"
+    else
+        info "Downloading prebuilt Python runtime from mirror ($BT_MIRROR)..."
+        wget -O pyenv.tar.gz "$BT_MIRROR/install/pyenv_${arch}.tar.gz" --no-check-certificate || return 1
+        tar xzf pyenv.tar.gz && rm -f pyenv.tar.gz
+    fi
     [ -f "$PANEL_DIR/pyenv/bin/python3" ]
 }
 
@@ -153,7 +180,7 @@ elif [ -f "$PANEL_DIR/pyenv/bin/python3" ] && [ "$FRESH" = "0" ]; then
     info "Existing pyenv found — keeping it. (Run with --pyenv-cdn or delete $PANEL_DIR/pyenv to rebuild.)"
 else
     build_pyenv_pip || {
-        warn "Local pip build failed; falling back to prebuilt runtime from aapanel.com."
+        warn "Local pip build failed; falling back to prebuilt runtime from mirror."
         download_pyenv_cdn || error "Could not provision a Python runtime."
     }
 fi
@@ -251,5 +278,5 @@ echo
 
 if [ "$PROMPT_STACK" = "1" ]; then
     echo -e "Install the web stack now (PHP / Nginx / MySQL / phpMyAdmin / Redis)?"
-    echo -e "  Run: ${YELLOW}bash post_install.sh --all${NC}   (downloads compiled software from aapanel.com CDN)"
+    echo -e "  Run: ${YELLOW}bash post_install.sh --all${NC}   (pulls compiled software from your mirror: $BT_MIRROR)"
 fi

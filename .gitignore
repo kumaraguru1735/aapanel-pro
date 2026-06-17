@@ -9,6 +9,9 @@ panel/logs/*
 !panel/logs/.gitkeep
 panel/pyenv/
 
+# Populated local mirror data (large; created by mirror-pull.sh on YOUR machine)
+mirror/
+
 # OS junk
 Thumbs.db
 .DS_Store

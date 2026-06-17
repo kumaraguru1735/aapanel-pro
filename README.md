@@ -170,19 +170,62 @@ Architectures: x86_64, aarch64 (ARM64)
 
 ---
 
-## External Dependencies
+## Zero CDN — Serve Everything From Your Own Mirror
 
-The **panel itself is fully self-contained** — its source, plugins, DRM bypass and
-config templates all live in this repo and it never phones home to aapanel.com.
+No script in this repo downloads from aapanel.com or bt.cn. Every external
+artifact (compiled PHP/Nginx/MySQL, the Python runtime, Python wheels) is fetched
+from **a local mirror that you control**, configured in `mirror.conf`:
 
-What is still fetched from outside the repo:
+```ini
+BT_MIRROR="http://10.0.0.5:5050"   # your mirror server
+```
 
-| Component | Source | Why |
-|-----------|--------|-----|
-| Python packages | PyPI (pip) | Runtime libs built from `panel/requirements.txt`. Use `--pyenv-cdn` for aapanel.com's prebuilt runtime instead. |
-| PHP / Nginx / MySQL / Redis | aapanel.com CDN (via `post_install.sh`) | Compiled per-OS from source; cannot be bundled in git for every distro/arch. |
+`install.sh`, the panel's runtime software-installer (`install_soft.sh`),
+`public.sh`, and the pyenv fallback all read this single value.
 
-Everything else is local:
-- Full panel application source in `panel/`
-- `public.sh` (shared install lib) bundled locally
-- Mail server config templates (dovecot/postfix/rspamd) bundled in `plugin/mail_sys/mail_conf/`
+### One-time setup of the mirror
+
+Run on any internet-connected machine (can be the mirror server itself). This is
+the **only** step that ever touches a CDN — once, to fill your mirror:
+
+```bash
+bash mirror-pull.sh        # downloads soft-install scripts, source tarballs,
+                           # prebuilt pyenv, and Python wheels into ./mirror
+```
+
+Then serve it (on your mirror server) and point installs at it:
+
+```bash
+bash mirror-serve.sh 5050               # serves ./mirror on :5050 (python http.server)
+# edit mirror.conf -> BT_MIRROR="http://<mirror-ip>:5050"
+sudo bash install.sh                    # installs entirely from your mirror, no CDN
+```
+
+You can also serve `./mirror` with nginx/apache instead of `mirror-serve.sh` —
+just match the URL in `BT_MIRROR`.
+
+> **Why a mirror and not git?** aaPanel's compiled software (PHP 5.6–8.3, Nginx,
+> MySQL, …) is gigabytes of per-distro/per-arch binaries and the Python runtime is
+> ~700 MB — far too large to commit to git. Mirroring them once to your own server
+> gives you a permanent, CDN-independent source you fully control.
+>
+> A few soft-install scripts compute tarball filenames at runtime. If an install
+> 404s against your mirror, copy that exact path into `mirror/` and re-serve —
+> `mirror-pull.sh` prints any URLs it couldn't pre-fetch.
+
+### Fully local (no PyPI either)
+
+`mirror-pull.sh` also downloads all Python wheels into `mirror/pip`. When that
+folder is present, `install.sh` builds the runtime with `pip --no-index`, so even
+the Python packages come from your mirror, not PyPI.
+
+---
+
+## What ships in the repo vs. the mirror
+
+| Local in repo (git) | From your mirror (one-time pull) |
+|---------------------|----------------------------------|
+| Full panel application source (`panel/`) | Compiled PHP / Nginx / MySQL / Redis / phpMyAdmin / FTP |
+| All 20 Pro plugins (`plugin/`) | Prebuilt Python runtime (`pyenv`) — optional, pip build is default |
+| DRM bypass + patched JS (`patches/`, `so/`) | Python wheels (`mirror/pip`) — optional, makes runtime PyPI-free |
+| Mail config templates, `public.sh`, installers | — |

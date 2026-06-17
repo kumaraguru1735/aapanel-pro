@@ -2,7 +2,18 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-serverUrl=https://node.aapanel.com/install
+# ─── Local mirror resolution (no CDN) ─────────────────────────────────────────
+if [ -z "$BT_MIRROR" ]; then
+	for _cfg in /www/server/panel/data/mirror.conf "$(dirname "$0")/../../mirror.conf"; do
+		if [ -f "$_cfg" ]; then
+			. "$_cfg"
+			break
+		fi
+	done
+fi
+[ -z "$BT_MIRROR" ] && BT_MIRROR="http://127.0.0.1:5050"
+
+serverUrl="$BT_MIRROR/install"
 mtype=$1
 actionType=$2
 name=$3
@@ -16,7 +27,6 @@ if [ "$check_dash" = "/usr/bin/dash" ] || [ "$check_dash" = "/bin/dash" ] || [ "
         ln -sf /bin/bash /bin/sh
     fi
 fi
-
 
 if [ ! -f 'lib.sh' ];then
 	wget -O lib.sh $serverUrl/$mtype/lib.sh --no-check-certificate
@@ -32,7 +42,15 @@ if [ "$actionType" == 'install' ];then
 	bash lib.sh
 fi
 
-sed -i 's/download\.bt\.cn/node\.aapanel\.com/g' $name.sh
+# Rewrite every CDN host inside the downloaded soft script to the local mirror,
+# so tarballs/sources are also fetched locally (no download.bt.cn / aapanel.com).
+MIRROR_HOST=$(echo "$BT_MIRROR" | sed 's#/*$##')
+sed -i \
+	-e "s#https\?://download\.bt\.cn#${MIRROR_HOST}#g" \
+	-e "s#https\?://node\.aapanel\.com#${MIRROR_HOST}#g" \
+	-e "s#https\?://[a-z0-9-]*\.bt\.cn#${MIRROR_HOST}#g" \
+	-e "s#https\?://www\.aapanel\.com#${MIRROR_HOST}#g" \
+	$name.sh
 
 bash $name.sh $actionType $version
 
